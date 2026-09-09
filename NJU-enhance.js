@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         南大LMS智慧教育平台|MOOC增强
 // @namespace    http://tampermonkey.net/
-// @version      0.51
+// @version      0.52
 // @description  南大LMS原生播放按钮自动播放、后台播放保护、自动下一节、统一认证自动填表 + MOOC倍速控制 + 一键下载课件
 // @author       Hronrad
 // @license    GPL-3.0-only
@@ -48,6 +48,23 @@
 
     const isICourse163 = location.hostname.includes('icourse163.org');
     const isAuthServer = location.hostname.includes('authserver.nju.edu.cn');
+
+    function migrateLegacyLearningActivityRoute() {
+        if (location.hostname !== 'lms.nju.edu.cn') return false;
+        if (!/^\/course\/\d+\/learning-activity\/?$/.test(location.pathname)) return false;
+        if (!/^#\/\d+(?:[/?]|$)/.test(location.hash)) return false;
+
+        // The current LMS renders the activity navigation (chapter list and
+        // previous/next controls) only on the full-screen route. Old links and
+        // bookmarks still open the legacy detail route, where there is no next
+        // control for the completion handler to click.
+        const pathname = location.pathname.replace(
+            /\/learning-activity\/?$/,
+            '/learning-activity/full-screen'
+        );
+        location.replace(`${location.origin}${pathname}${location.search}${location.hash}`);
+        return true;
+    }
 
     const GlobalSettings = {
         config: {
@@ -104,6 +121,8 @@
         whenDocumentReady(initAuthLoginAssistant);
         return;
     }
+
+    if (migrateLegacyLearningActivityRoute()) return;
 
     function getAllowedSpeeds() {
         return [0.1, 0.5, 1, 1.5, 2, 3, 16];
